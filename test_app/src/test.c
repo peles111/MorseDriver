@@ -56,7 +56,10 @@ void* user_comm_foo(void* p)
         while (command_character != 'N' && command_character != 'Q' && command_character != 'T'
         && command_character != 'n' && command_character != 'q' && command_character != 't')
         {
-            printf("Enter work regime\n N/n - normal; T/t - test; !/q - quit\n");
+            if(command_character != '\r' && command_character != '\n')
+            {
+                printf("\n====================\nEnter work regime\nN/n - normal; T/t - test; !/q - quit\n");
+            }
             scanf("%c", &command_character);
             if(command_character == 't' || command_character == 'T')
             {
