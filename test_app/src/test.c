@@ -9,7 +9,7 @@
 #include <time.h>
 
 #define MSG_LEN 50
-#define MAX_LEN (MSG_LEN + 49) // for #
+#define MAX_LEN (MSG_LEN + 49) // for # which help us on reading side
 #define TEST_LEN 5
 #define DEVICE_NAME "/dev/morse"
 #define NUM_OF_CHARACTERS 37
@@ -38,25 +38,14 @@ void *task_foo(void *p);
 
 void *user_comm_foo(void *p)
 {
-    /*commented block that follows is only needed for additional task
-     *    char diode_number;
-     *    int time_unit;
-     *
-     *   printf("Enter diode number\n");
-     *  scanf("%c", &diode_number);
-     *
-     *   printf("Enter time_unit\n");
-     *  scanf("%d", &time_unit);
-     */
 
-    // how to be sure that user inserted one char exactly? Not neccessary but still curious
     while (1)
     {
         while (command_character != 'N' && command_character != 'Q' && command_character != 'T' && command_character != 'n' && command_character != 'q' && command_character != 't')
         {
             if (command_character != '\r' && command_character != '\n')
             {
-                printf("\n====================\nEnter work regime\nN/n - normal; T/t - test; !/q - quit\n");
+                printf("\n====================\nEnter work regime\nN/n - normal; T/t - test; Q/q - quit\n");
             }
             scanf("%c", &command_character);
             if (command_character == 't' || command_character == 'T')
@@ -77,8 +66,6 @@ void *user_comm_foo(void *p)
         }
         else
         {
-            // waits until task finishes and requests next iteration instead of exiting; maybe
-            // way I imagined it isn't quite right
             sem_wait(&synchro);
         }
     }
@@ -106,9 +93,6 @@ void *task_foo(void *p)
                 if (file_desc < 0)
                 {
                     printf("%s device isn't open or doesn't exist: exiting application!\n", dname);
-                    // printf("Try:\t1) Check does " DEVICE_NAME " node exist\n\t2)'chmod 666 " DEVICE_NAME "\n\t3) "
-                    //        "insmod"
-                    //        " morse module\n");
                     sem_post(&synchro);
                     exit(-1);
                 }
@@ -139,9 +123,6 @@ void *task_foo(void *p)
                     if (file_desc < 0)
                     {
                         printf("%s device isn't open or doesn't exist: exiting application!\n", dname);
-                        // printf("Try:\t1) Check does " DEVICE_NAME " node exist\n\t2)'chmod 666 " DEVICE_NAME "\n\t3) "
-                        //        "insmod"
-                        //        " morse module\n");
                         sem_post(&synchro);
                         exit(-1);
                     }
@@ -173,9 +154,6 @@ void *task_foo(void *p)
             if (file_desc < 0)
             {
                 printf("%s device isn't open or doesn't exist: exiting application!\n", dname);
-                // printf("Try:\t1) Check does " DEVICE_NAME " node exist\n\t2)'chmod 666 " DEVICE_NAME "\n\t3) "
-                //        "insmod"
-                //        " morse module\n");
                 sem_post(&synchro);
                 exit(-1);
             }
@@ -194,9 +172,6 @@ void *task_foo(void *p)
             if (file_desc < 0)
             {
                 printf("%s device isn't open or doesn't exist: exiting application!\n", dname);
-                // printf("Try:\t1) Check does " DEVICE_NAME " node exist\n\t2)'chmod 666 " DEVICE_NAME "\n\t3) "
-                //        "insmod"
-                //        " morse module\n");
                 sem_post(&synchro);
                 exit(-1);
             }
@@ -220,8 +195,6 @@ void *task_foo(void *p)
             else
             {
                 printf("Test number %d failed.\n", test_ind);
-                // sem_post(&synchro);
-                // exit(-1);
             }
 
             command_character = ' ';

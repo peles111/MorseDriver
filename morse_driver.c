@@ -14,6 +14,7 @@
 #define ACT_LED_GPIO_PIN_OFFSET (ACT_LED_GPIO_PIN - 40)
 #define GPSET1_OFFSET (0x00000020)
 #define GPCLR1_OFFSET (0x0000002C)
+
 //LED BLINKING UNITS
 #define DOT_UNIT (1)
 #define PART_UNIT (1)
@@ -28,24 +29,18 @@
 
 #define MSG_LEN 50
 #define MAX_MSG_LEN (MSG_LEN + 49)
-#define MAX_CODE_LEN 6 // zbog terminalnog karaktera
+#define MAX_CODE_LEN 6 // because of terminal char
 #define NUM_OF_CHARACTERS 37
 #define GPFSEL4_OFFSET 0x00000010
 
 static int major_number;
 static int slen = 0;
 
-enum led_state {LED_STATE_OFF = 0, LED_STATE_ON = 1, LED_STATE_BLINK = 3};
-
-enum led_power {LED_POWER_OFF = 0, LED_POWER_ON = 1};
 
 struct led_dev {
-    void __iomem   *regs;               /* Virtual address where the physical GPIO address is mapped */
+    	void __iomem   *regs;               /* Virtual address where the physical GPIO address is mapped */
 	u8             gpio;                /* GPIO pin that the LED is connected to */
 	u32            blink_period_msec;   /* LED blink period in msec */
-    enum led_state state;               /* LED state */
-    enum led_power power;               /* LED current power state */
-	struct hrtimer blink_timer;         /* Blink timer */
 	ktime_t        kt;                  /* Blink timer period */
 };
 
@@ -53,9 +48,7 @@ static struct led_dev act_led =
 {
     regs              : NULL,
     gpio              : ACT_LED_GPIO_PIN,
-	blink_period_msec : ACT_LED_BLINK_PERIOD_MSEC,
-    state             : LED_STATE_BLINK,
-    power             : LED_POWER_OFF
+    blink_period_msec : ACT_LED_BLINK_PERIOD_MSEC,
 };
 
 static char message_buffer[MAX_MSG_LEN];
@@ -63,7 +56,7 @@ static char code_buffer[MAX_MSG_LEN][MAX_CODE_LEN];
 
 static char* map[NUM_OF_CHARACTERS] = 
 {
-	".-",
+	".-",		//A
 	"-...",
 	"-.-.",
 	"-..",
@@ -77,7 +70,7 @@ static char* map[NUM_OF_CHARACTERS] =
 	".-..",
 	"--",
 	"-.",
-	"---", //O
+	"---", 		
 	".--.",
 	"--.-",
 	".-.",
@@ -88,9 +81,9 @@ static char* map[NUM_OF_CHARACTERS] =
 	".--",
 	"-..-",
 	"-.--",
-	"--..",//Z
-	" ",//space
-	"-----", //numbers
+	"--..",		//Z
+	" ",		//space
+	"-----", 	//numbers
 	".----",
 	"..---",
 	"...--",
@@ -122,8 +115,7 @@ int morse_read(struct file *fildesc, char *buf, size_t len, loff_t *f_pos)
 {
 	int data_size = 0;
 	int retval = 0;
-	// iz user aplikacije zvati funkciju read za svaki karakter sa len = 5 
-    	if (*f_pos == 0) // ako se krece iz pocetka 
+    	if (*f_pos == 0) 
     	{
     		int i;
         	/* Get size of valid data. */
@@ -136,11 +128,10 @@ int morse_read(struct file *fildesc, char *buf, size_t len, loff_t *f_pos)
         		}
         		else
         		{
-            			//(*f_pos) += data_size;
             			buf+=data_size;
             			retval+=data_size; 
             			if(i != slen -1){
-		    			if(copy_to_user(buf,"#",1) != 0) //# character will serve as separtor
+		    			if(copy_to_user(buf,"#",1) != 0) //# character will serve as separtor on reading side
 		    			{
 		    				return -EFAULT;
 		    			}
@@ -180,15 +171,12 @@ int morse_write(struct file *filedesc, const char *buf, size_t len, loff_t *f_po
 	}
 	else
 	{
-		printk(KERN_INFO "\nMessage buffer in DRIVER content: %s", message_buffer);
 		/* Take code from map*/
 		for (i = 0; i < len; ++i)
 		{
 			if (message_buffer[i] > 64 && message_buffer[i] < 91)
 			{
-
 				strncpy(code_buffer[i], map[message_buffer[i] - 'A'], MAX_CODE_LEN);
-				// code_buffer[i] = map[message_buffer[i] - 'A'];	//i really hope this is right
 			}
 			else if (message_buffer[i] > 47 && message_buffer[i] < 58)
 			{
@@ -248,7 +236,6 @@ int morse_write(struct file *filedesc, const char *buf, size_t len, loff_t *f_po
 	}
 	
 }
-
 
 static int __init morse_init(void)
 {
@@ -315,14 +302,6 @@ void SetDiodeAsOutput(void __iomem *regs, u8 pin)
 	iowrite32(tmp, regs + GPFSELReg_offset);
 }
 
-/*
- * SetGpioPin function
- *  Parameters:
- *   regs      - virtual address where the physical GPIO address is mapped
- *   pin       - number of GPIO pin;
- *  Operation:
- *   Sets the desired GPIO pin to HIGH level. The pin should previously be defined as output.
- */
 void SetGpioPin(void __iomem *regs, u8 pin)
 {
     u32 GPSETreg_offset;
