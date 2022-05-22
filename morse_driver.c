@@ -5,16 +5,57 @@
 #include <linux/errno.h>
 #include <asm/uaccess.h>
 #include <asm/string.h>
+#include <asm/io.h>
+
+//LED
+
+#define ACT_LED_GPIO_PIN (47)
+#define ACT_LED_BLINK_PERIOD_MSEC (1000)
+#define ACT_LED_GPIO_PIN_OFFSET (ACT_LED_GPIO_PIN - 40)
+#define GPSET1_OFFSET (0x00000020)
+#define GPCLR1_OFFSET (0x0000002C)
+//LED BLINKING UNITS
+#define DOT_UNIT (1)
+#define PART_UNIT (1)
+#define SPACE_UNIT (3) // two hashes + space
+#define DASH_UNIT (3)
+#define HASH_UNIT (1)
+
+//ADDR
+#define GPIO_BASE_ADDR      (0x3F200000)
+#define GPIO_ADDR_SPACE_LEN (0xB4)
 
 #define MSG_LEN 50
 #define MAX_MSG_LEN (MSG_LEN + 49)
 #define MAX_CODE_LEN 6 // zbog terminalnog karaktera
 #define NUM_OF_CHARACTERS 37
-
-//as far as I understand, 0 has the longest code of 19 units
+#define GPFSEL4_OFFSET 0x00000010
 
 static int major_number;
 static int slen = 0;
+
+enum led_state {LED_STATE_OFF = 0, LED_STATE_ON = 1, LED_STATE_BLINK = 3};
+
+enum led_power {LED_POWER_OFF = 0, LED_POWER_ON = 1};
+
+struct led_dev {
+    void __iomem   *regs;               /* Virtual address where the physical GPIO address is mapped */
+	u8             gpio;                /* GPIO pin that the LED is connected to */
+	u32            blink_period_msec;   /* LED blink period in msec */
+    enum led_state state;               /* LED state */
+    enum led_power power;               /* LED current power state */
+	struct hrtimer blink_timer;         /* Blink timer */
+	ktime_t        kt;                  /* Blink timer period */
+};
+
+static struct led_dev act_led =
+{
+    regs              : NULL,
+    gpio              : ACT_LED_GPIO_PIN,
+	blink_period_msec : ACT_LED_BLINK_PERIOD_MSEC,
+    state             : LED_STATE_BLINK,
+    power             : LED_POWER_OFF
+};
 
 static char message_buffer[MAX_MSG_LEN];
 static char code_buffer[MAX_MSG_LEN][MAX_CODE_LEN];
@@ -60,10 +101,14 @@ static char* map[NUM_OF_CHARACTERS] =
 	"----."
 };
 
+
 static int __init morse_init(void);
 static void __exit  morse_exit(void);
 int morse_read(struct file *fildesc, char *buf, size_t len, loff_t *f_pos);
 int morse_write(struct file *filedesc, const char *buf, size_t len, loff_t *f_pos);
+void SetDiodeAsOutput(void __iomem *regs, u8 pin);
+void SetGpioPin(void __iomem *regs, u8 pin);
+void ClearGpioPin(void __iomem *regs, u8 pin);
 
 struct file_operations fops =
 {
@@ -182,6 +227,17 @@ static int __init morse_init(void)
 
 	}
 
+	act_led.regs = ioremap(GPIO_BASE_ADDR, GPIO_ADDR_SPACE_LEN);
+    if(!act_led.regs)
+    {
+        retcode = -ENOMEM;
+        unregister_chrdev(major_number, "morse");
+		return retcode;
+    }
+
+	SetDiodeAsOutput(act_led.regs, ACT_LED_GPIO_PIN);
+	SetGpioPin(act_led.regs, ACT_LED_GPIO_PIN);
+
 	printk(KERN_INFO "Registered Morse module with maj. number %d\n", major_number);
 
 
@@ -191,10 +247,65 @@ static int __init morse_init(void)
 static void __exit  morse_exit(void)
 {
 
+    ClearGpioPin(act_led.regs, ACT_LED_GPIO_PIN);
 	printk(KERN_INFO "Removing Morse code module.\n");
 	unregister_chrdev(major_number, "morse");
 }
 
+void SetDiodeAsOutput(void __iomem *regs, u8 pin)
+{
+    u32 GPFSELReg_offset;
+    u32 tmp;
+    u32 mask;
+
+    GPFSELReg_offset = GPFSEL4_OFFSET;
+    pin = ACT_LED_GPIO_PIN_OFFSET;
+
+    /* Set gpio pin direction. */
+    tmp = ioread32(regs + GPFSELReg_offset);
+
+	// set diode as output: set 1
+	mask = 0x1 << (pin * 3);
+	tmp |= mask;
+
+	iowrite32(tmp, regs + GPFSELReg_offset);
+}
+
+/*
+ * SetGpioPin function
+ *  Parameters:
+ *   regs      - virtual address where the physical GPIO address is mapped
+ *   pin       - number of GPIO pin;
+ *  Operation:
+ *   Sets the desired GPIO pin to HIGH level. The pin should previously be defined as output.
+ */
+void SetGpioPin(void __iomem *regs, u8 pin)
+{
+    u32 GPSETreg_offset;
+    u32 tmp;
+
+    /* Get base address of gpio set register. */
+    GPSETreg_offset = GPSET1_OFFSET;
+    pin = pin - 32;
+
+    /* Set gpio. */
+    tmp = 0x1 << pin;
+    iowrite32(tmp, regs + GPSETreg_offset);
+}
+
+void ClearGpioPin(void __iomem *regs, u8 pin)
+{
+    u32 GPCLRreg_offset;
+    u32 tmp;
+
+    /* Get base address of gpio clear register. */
+    GPCLRreg_offset = GPCLR1_OFFSET;
+    pin = pin - 32;
+
+    /* Clear gpio. */
+    tmp = 0x1 << pin;
+    iowrite32(tmp, regs + GPCLRreg_offset);
+}
 
 module_init(morse_init);
 module_exit(morse_exit);
