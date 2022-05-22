@@ -11,9 +11,6 @@
 #define MSG_LEN 50
 #define MAX_LEN (MSG_LEN + 49) // for #
 #define TEST_LEN 5
-#define PART_UNIT 1
-#define LETTER_UNIT 3
-#define SPACE_UNIT 1
 #define DEVICE_NAME "/dev/morse"
 #define NUM_OF_CHARACTERS 37
 #define MAX_DEVICE_NAME 255

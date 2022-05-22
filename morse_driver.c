@@ -6,7 +6,7 @@
 #include <asm/uaccess.h>
 #include <asm/string.h>
 #include <asm/io.h>
-
+#include <linux/delay.h>
 //LED
 
 #define ACT_LED_GPIO_PIN (47)
@@ -17,7 +17,8 @@
 //LED BLINKING UNITS
 #define DOT_UNIT (1)
 #define PART_UNIT (1)
-#define SPACE_UNIT (3) // two hashes + space
+#define LETTER_UNIT (3)
+#define SPACE_UNIT (4) // LETTER_UNIT + space will give 7
 #define DASH_UNIT (3)
 #define HASH_UNIT (1)
 
@@ -165,31 +166,35 @@ int morse_read(struct file *fildesc, char *buf, size_t len, loff_t *f_pos)
 
 int morse_write(struct file *filedesc, const char *buf, size_t len, loff_t *f_pos)
 {
-	    int i = 0;
+	int i = 0;
+	int j = 0;
+	int k = 0;
 
-	    /* Reset memory. */
-	    memset(message_buffer, 0, MAX_MSG_LEN);
+	/* Reset memory. */
+	memset(message_buffer, 0, MAX_MSG_LEN);
 
-	    /* Get data from user space.*/
-	    if (copy_from_user(message_buffer, buf, len) != 0)
-	    {
+	/* Get data from user space.*/
+	if (copy_from_user(message_buffer, buf, len) != 0)
+	{
 		return -EFAULT;
-	    }
-	    else
-	    {
-	    	printk(KERN_INFO "\nMessage buffer in DRIVER content: %s", message_buffer);
-		    /* Take code from map*/      	
-		for(i=0; i < len; ++i){
-			if(message_buffer[i] > 64 && message_buffer[i] < 91){
-			
+	}
+	else
+	{
+		printk(KERN_INFO "\nMessage buffer in DRIVER content: %s", message_buffer);
+		/* Take code from map*/
+		for (i = 0; i < len; ++i)
+		{
+			if (message_buffer[i] > 64 && message_buffer[i] < 91)
+			{
+
 				strncpy(code_buffer[i], map[message_buffer[i] - 'A'], MAX_CODE_LEN);
-		  	  	//code_buffer[i] = map[message_buffer[i] - 'A'];	//i really hope this is right
+				// code_buffer[i] = map[message_buffer[i] - 'A'];	//i really hope this is right
 			}
-			else if(message_buffer[i] > 47 && message_buffer[i] < 58) 
+			else if (message_buffer[i] > 47 && message_buffer[i] < 58)
 			{
 				strncpy(code_buffer[i], map[message_buffer[i] - 21], MAX_CODE_LEN);
 			}
-			else if(message_buffer[i] == 32)
+			else if (message_buffer[i] == 32)
 			{
 				strncpy(code_buffer[i], " ", MAX_CODE_LEN);
 			}
@@ -197,12 +202,51 @@ int morse_write(struct file *filedesc, const char *buf, size_t len, loff_t *f_po
 			{
 				printk(KERN_INFO "\nInvalid char\n");
 			}
-
 		}
+
 		slen = i;
+
+		for (j = 0; j < slen; j++)
+		{
+			for (k = 0; k < MAX_CODE_LEN; k++)
+			{
+				switch (code_buffer[j][k])
+				{
+				case 0:
+					break;
+
+				case '.':
+					// signal one unit here
+					SetGpioPin(act_led.regs, ACT_LED_GPIO_PIN);
+					msleep(DOT_UNIT * ACT_LED_BLINK_PERIOD_MSEC);
+					ClearGpioPin(act_led.regs, ACT_LED_GPIO_PIN);
+					if (code_buffer[j][k + 1] != 0 && code_buffer[j][k + 1] != '\0')
+						msleep(PART_UNIT * ACT_LED_BLINK_PERIOD_MSEC);
+					break;
+
+				case '-':
+					SetGpioPin(act_led.regs, ACT_LED_GPIO_PIN);
+					msleep(DASH_UNIT * ACT_LED_BLINK_PERIOD_MSEC);
+					ClearGpioPin(act_led.regs, ACT_LED_GPIO_PIN);
+					if (code_buffer[j][k + 1] != 0 && code_buffer[j][k + 1] != '\0')
+						msleep(PART_UNIT * ACT_LED_BLINK_PERIOD_MSEC);
+					break;
+
+				case ' ':
+					ClearGpioPin(act_led.regs, ACT_LED_GPIO_PIN);
+					msleep(SPACE_UNIT * ACT_LED_BLINK_PERIOD_MSEC);
+					break;
+				}
+
+				if (code_buffer[j][k] == 0)
+					break;
+			}
+			msleep(LETTER_UNIT * ACT_LED_BLINK_PERIOD_MSEC);
+		}
+		memset(message_buffer, 0, MAX_MSG_LEN);
 		return len;
-	    }
-	    memset(message_buffer, 0, MAX_MSG_LEN);
+	}
+	
 }
 
 
