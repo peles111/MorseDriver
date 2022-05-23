@@ -11,7 +11,6 @@
 #define MSG_LEN 50
 #define MAX_LEN (MSG_LEN + 49) // for # which help us on reading side
 #define TEST_LEN 5
-#define DEVICE_NAME "/dev/morse"
 #define NUM_OF_CHARACTERS 37
 #define MAX_DEVICE_NAME 255
 
@@ -27,6 +26,8 @@ int ret_val;
 pthread_t user_communication;
 pthread_t task;
 
+pthread_mutex_t mut;
+
 char *test_array[5] = {"MORSE", "TEST", "LINUX EMBEDDED", "2ROOM", "FIFTH ELEMENT"};
 char *codes[5] = {"--#---#.-.#...#.", "-#.#...#-", ".-..#..#-.#..-#-..-# #.#--#-...#.#-..#-..#.#-..", "..---#.-.#---#---#--", "..-.#..#..-.#-#....# #.#.-..#.#--#.#-.#-"};
 char *output_array;
@@ -38,9 +39,11 @@ void *task_foo(void *p);
 
 void *user_comm_foo(void *p)
 {
-
+   
     while (1)
     {
+        pthread_mutex_lock(&mut);
+
         while (command_character != 'N' && command_character != 'Q' && command_character != 'T' && command_character != 'n' && command_character != 'q' && command_character != 't')
         {
             if (command_character != '\r' && command_character != '\n')
@@ -59,6 +62,7 @@ void *user_comm_foo(void *p)
             }
         }
         sem_post(&shared);
+        pthread_mutex_unlock(&mut);
 
         if (command_character == 'q' || command_character == 'Q')
         {
@@ -79,7 +83,8 @@ void *task_foo(void *p)
     while (1)
     {
         sem_wait(&shared);
-
+        pthread_mutex_lock(&mut);
+        
         if (command_character == 'n' || command_character == 'N')
         {
             printf("Normal regime starts!\n");
@@ -143,6 +148,8 @@ void *task_foo(void *p)
                 sleep(2);
             }
             command_character = ' ';
+            pthread_mutex_unlock(&mut);
+
             /*actual job*/
             sem_post(&synchro);
         }
@@ -198,6 +205,7 @@ void *task_foo(void *p)
             }
 
             command_character = ' ';
+            pthread_mutex_unlock(&mut);
 
             sem_post(&synchro);
         }
@@ -228,6 +236,7 @@ int main(int argc, char *argv[])
     user_comm writes it signals semaphore */
     sem_init(&shared, 0, 0);
     sem_init(&synchro, 0, 0);
+    pthread_mutex_init(&mut, NULL);
 
     pthread_create(&user_communication, NULL, user_comm_foo, (void *)dev_name);
     pthread_create(&task, NULL, task_foo, (void *)dev_name);

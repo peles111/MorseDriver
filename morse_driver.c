@@ -14,7 +14,6 @@
 #define ACT_LED_GPIO_PIN_OFFSET (ACT_LED_GPIO_PIN - 40)
 #define GPSET1_OFFSET (0x00000020)
 #define GPCLR1_OFFSET (0x0000002C)
-
 //LED BLINKING UNITS
 #define DOT_UNIT (1)
 #define PART_UNIT (1)
@@ -38,7 +37,7 @@ static int slen = 0;
 
 
 struct led_dev {
-    	void __iomem   *regs;               /* Virtual address where the physical GPIO address is mapped */
+    void __iomem   *regs;               /* Virtual address where the physical GPIO address is mapped */
 	u8             gpio;                /* GPIO pin that the LED is connected to */
 	u32            blink_period_msec;   /* LED blink period in msec */
 	ktime_t        kt;                  /* Blink timer period */
