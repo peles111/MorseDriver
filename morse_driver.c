@@ -193,6 +193,8 @@ int morse_write(struct file *filedesc, const char *buf, size_t len, loff_t *f_po
 
 		slen = i;
 
+		printk(KERN_INFO "Length of a message is %d\n", slen);
+
 		for (j = 0; j < slen; j++)
 		{
 			for (k = 0; k < MAX_CODE_LEN; k++)
@@ -226,9 +228,13 @@ int morse_write(struct file *filedesc, const char *buf, size_t len, loff_t *f_po
 				}
 
 				if (code_buffer[j][k] == 0)
+				{
+					if (j != slen - 1)
+						msleep(LETTER_UNIT * ACT_LED_BLINK_PERIOD_MSEC);
 					break;
+				}
+					
 			}
-			msleep(LETTER_UNIT * ACT_LED_BLINK_PERIOD_MSEC);
 		}
 		memset(message_buffer, 0, MAX_MSG_LEN);
 		return len;
