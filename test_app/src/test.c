@@ -248,6 +248,6 @@ int main(int argc, char *argv[])
     sem_destroy(&shared);
 
     free(dev_name);
-
+    free(output_array);
     return 0;
 }

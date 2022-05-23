@@ -49,7 +49,7 @@ static struct led_dev act_led =
     blink_period_msec : ACT_LED_BLINK_PERIOD_MSEC,
 };
 
-static char message_buffer[MAX_MSG_LEN];
+static char message_buffer[MSG_LEN];
 static char code_buffer[MAX_MSG_LEN][MAX_CODE_LEN];
 
 static char* map[NUM_OF_CHARACTERS] = 
@@ -160,7 +160,7 @@ int morse_write(struct file *filedesc, const char *buf, size_t len, loff_t *f_po
 	int k = 0;
 
 	/* Reset memory. */
-	memset(message_buffer, 0, MAX_MSG_LEN);
+	memset(message_buffer, 0, MSG_LEN);
 
 	/* Get data from user space.*/
 	if (copy_from_user(message_buffer, buf, len) != 0)
@@ -235,7 +235,7 @@ int morse_write(struct file *filedesc, const char *buf, size_t len, loff_t *f_po
 					
 			}
 		}
-		memset(message_buffer, 0, MAX_MSG_LEN);
+		memset(message_buffer, 0, MSG_LEN);
 		return len;
 	}
 	
