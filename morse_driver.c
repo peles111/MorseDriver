@@ -40,7 +40,6 @@ struct led_dev {
     void __iomem   *regs;               /* Virtual address where the physical GPIO address is mapped */
 	u8             gpio;                /* GPIO pin that the LED is connected to */
 	u32            blink_period_msec;   /* LED blink period in msec */
-	ktime_t        kt;                  /* Blink timer period */
 };
 
 static struct led_dev act_led =
@@ -272,7 +271,6 @@ static int __init morse_init(void)
     }
 
 	SetDiodeAsOutput(act_led.regs, ACT_LED_GPIO_PIN);
-	SetGpioPin(act_led.regs, ACT_LED_GPIO_PIN);
 
 	printk(KERN_INFO "Registered Morse module with maj. number %d\n", major_number);
 
